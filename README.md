@@ -1,6 +1,6 @@
 ### plmOS SQLServer
 
-plmOS SQLServer is a .NET library that implements a Microsoft SQL Server Database.
+plmOS SQLServer is a .NET library that implements a Microsoft SQL Server plmOS Database.
 
 Copyright (C) 2015 [Processwall Limited](http://www.processwall.com).
 
@@ -28,7 +28,7 @@ must enter into a commercial licence agreement with Processwall Limited.
 
 #### Prerequisites
 
- * [plmOS/Model](https://github.com/plmOS/Model)
+ * [plmOS/Database](https://github.com/plmOS/Database)
  
 #### Contact Details
 
