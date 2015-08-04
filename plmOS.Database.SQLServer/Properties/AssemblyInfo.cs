@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("plmOS Model Database SQLServer")]
+[assembly: AssemblyTitle("plmOS Database SQLServer")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Processwall Limited")]
-[assembly: AssemblyProduct("plmOS Model Database SQLServer")]
+[assembly: AssemblyProduct("plmOS Database SQLServer")]
 [assembly: AssemblyCopyright("Copyright © Processwall Limited 2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

@@ -7,8 +7,8 @@
     <ProjectGuid>{599BBB9E-3217-4DED-8D2D-DBC955EF410F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>plmOS.Model.Database.SQLServer</RootNamespace>
-    <AssemblyName>plmOS.Model.Database.SQLServer</AssemblyName>
+    <RootNamespace>plmOS.Database.SQLServer</RootNamespace>
+    <AssemblyName>plmOS.Database.SQLServer</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -41,6 +41,8 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Session.cs" />
+    <Compile Include="Table.cs" />
+    <Compile Include="Transaction.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Model\plmOS\plmOS.csproj">

@@ -30,49 +30,38 @@ using System.Threading.Tasks;
 
 namespace plmOS.Database.SQLServer
 {
-    public class Session : ISession
+    internal class Table
     {
-        public String Connection { get; private set; }
+        internal Session Session { get; private set; }
 
-        private Dictionary<Model.ItemType, Table> TableCache;
+        internal Model.ItemType ItemType { get; private set; }
 
-        public void Create(Model.ItemType ItemType)
+        private String _name;
+        internal String Name
         {
-            if (!this.TableCache.ContainsKey(ItemType))
+            get
             {
-                this.TableCache[ItemType] = new Table(this, ItemType);
-                this.TableCache[ItemType].Create();
+                return this._name;
             }
         }
 
-        public void Create(Model.RelationshipType RelationshipType)
-        {
-            if (!this.TableCache.ContainsKey(RelationshipType))
-            {
-                this.TableCache[RelationshipType] = new Table(this, RelationshipType);
-                this.TableCache[RelationshipType].Create();
-            }
-        }
-
-        public ITransaction BeginTransaction()
-        {
-            return new Transaction(this);
-        }
-
-        public void Create(IItem Item, ITransaction Transaction)
+        internal void Create()
         {
 
         }
 
-        public void Supercede(IItem Item, ITransaction Transaction)
+        public override string ToString()
         {
-
+            return this.ItemType.Name;
         }
 
-        public Session(String Connection)
+        internal Table(Session Session, Model.ItemType ItemType)
         {
-            this.Connection = Connection;
-            this.TableCache = new Dictionary<Model.ItemType, Table>();
+            this.Session = Session;
+            this.ItemType = ItemType;
+
+            // Set Name
+            this._name = this.ItemType.Name.ToLower().Replace('.', '_');
         }
     }
 }
