@@ -64,7 +64,7 @@ namespace plmOS.Database.SQLServer
 
         }
 
-        public void Supercede(IItem Item, ITransaction Transaction)
+        public void Supercede(IItem Item, System.Int64 Time, ITransaction Transaction)
         {
 
         }
