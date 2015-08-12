@@ -279,6 +279,252 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        internal String ColumnsSQL
+        {
+            get
+            {
+                String sql = this.RootTableName + ".versionid," + this.RootTableName + ".branchid," + this.RootTableName + ".itemid," + this.RootTableName + ".branched," + this.RootTableName + ".versioned," + this.RootTableName + ".superceded";
+
+                foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
+                {
+                    sql += "," + this.Session.Table(proptype.ItemType).Name + "." + proptype.Name.ToLower();
+                }
+
+                return sql;
+            }
+        }
+
+        internal String TablesSQL
+        {
+            get
+            {
+                if (this.ItemType.Name == BaseItemName)
+                {
+                    return this.Name;
+                }
+                else
+                {
+                    return this.Session.Table(this.ItemType.BaseItemType).TablesSQL + " inner join " + this.Name + " on " + this.Session.Table(this.ItemType.BaseItemType).Name + ".versionid=" + this.Name + ".versionid";
+                }
+            }
+        }
+
+        private String _rootTableName;
+        private String RootTableName
+        {
+            get
+            {
+                if (this._rootTableName == null)
+                {
+                    this._rootTableName = this.Session.Table(this.ItemType.RootItemType).Name;
+                }
+
+                return this._rootTableName;
+            }
+        }
+
+        private String OperatorSQL(Model.Conditions.Operators Operator)
+        {
+            switch (Operator)
+            {
+                case Model.Conditions.Operators.eq:
+                    return "=";
+                case Model.Conditions.Operators.ge:
+                    return ">=";
+                case Model.Conditions.Operators.gt:
+                    return ">";
+                case Model.Conditions.Operators.le:
+                    return "<=";
+                case Model.Conditions.Operators.lt:
+                    return "<";
+                case Model.Conditions.Operators.ne:
+                    return "<>";
+                default:
+                    throw new NotImplementedException("Invalid Condition Operator: " + Operator);
+            }
+        }
+
+        private String ValueSQL(Model.PropertyType PropertyType, Object Value)
+        {
+            if (Value == null)
+            {
+                return "NULL";
+            }
+            else
+            {
+                switch (PropertyType.Type)
+                {
+                    case Model.PropertyTypeValues.Double:
+                        return Value.ToString();
+                    case Model.PropertyTypeValues.Item:
+                        return "'" + ((Database.IItem)Value).BranchID.ToString() + "'";
+
+                    case Model.PropertyTypeValues.String:
+                        return "'" + Value.ToString() + "'";
+                    default:
+                        throw new NotImplementedException("Invalid PropertyType: " + PropertyType.Type);
+                }
+            }
+        }
+
+        private String ConditionSQL(Model.Condition Condition)
+        {
+            switch (Condition.GetType().Name)
+            {
+                case "And":
+
+                    String andsql = "(";
+
+                    for (int i = 0; i < Condition.Children.Count(); i++)
+                    {
+                        andsql += this.ConditionSQL(Condition.Children.ElementAt(i));
+
+                        if (i < (Condition.Children.Count() - 1))
+                        {
+                            andsql += " and ";
+                        }
+                    }
+
+                    andsql += ")";
+
+                    return andsql;
+
+                case "Or":
+
+                    String orsql = "(";
+
+                    for (int i = 0; i < Condition.Children.Count(); i++)
+                    {
+                        orsql += this.ConditionSQL(Condition.Children.ElementAt(i));
+
+                        if (i < (Condition.Children.Count() - 1))
+                        {
+                            orsql += " or ";
+                        }
+                    }
+
+                    orsql += ")";
+
+                    return orsql;
+
+                case "Property":
+                    Model.Conditions.Property propcondition = (Model.Conditions.Property)Condition;
+                    return "(" + this.Session.Table(propcondition.PropertyType.ItemType).Name + "." + propcondition.PropertyType.Name.ToLower() + this.OperatorSQL(propcondition.Operator) + this.ValueSQL(propcondition.PropertyType, propcondition.Value) + ")";
+                default:
+                    throw new NotImplementedException("Condition Type not implemented: " + Condition.GetType().Name);
+            }
+        }
+
+        internal IEnumerable<Database.IItem> Select(Model.Queries.Item Query) 
+        {
+            String sql = "select " + this.ColumnsSQL + " from " + this.TablesSQL;
+
+            if (Query.Condition != null)
+            {
+                sql += " where " + this.ConditionSQL(Query.Condition);
+            }
+
+            return this.Select(sql);
+        }
+
+        internal Database.IItem Select(Guid BranchID)
+        {
+            String sql = "select " + this.ColumnsSQL + " from " + this.TablesSQL + " where " + this.RootTableName + ".branchid='" + BranchID + "' and " + this.RootTableName + ".superceded=-1";
+            IEnumerable<Database.IItem> results = this.Select(sql);
+
+            if (results.Count() > 0)
+            {
+                return results.First();
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        private IEnumerable<Database.IItem> Select(String SQL)
+        {
+            List<Database.IItem> items = new List<Database.IItem>();
+
+            using(SqlConnection connection = new SqlConnection(this.Session.Connection))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(SQL, connection))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while(reader.Read())
+                        {
+                            Item item = new Item(this.Session);
+                            item.ItemType = this.ItemType;
+                            item.VersionID = reader.GetGuid(0);
+                            item.BranchID = reader.GetGuid(1);
+                            item.ItemID = reader.GetGuid(2);
+                            item.Branched = reader.GetInt64(3);
+                            item.Versioned = reader.GetInt64(4);
+                            item.Superceded = reader.GetInt64(5);
+
+                            int cnt = 6;
+
+                            foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
+                            {
+                                switch(proptype.Type)
+                                {
+                                    case Model.PropertyTypeValues.Double:
+
+                                        if (reader.IsDBNull(cnt))
+                                        {
+                                            item.AddProperty(new Property(item, proptype, null));
+                                        }
+                                        else
+                                        {
+                                            item.AddProperty(new Property(item, proptype, reader.GetDouble(cnt)));
+                                        }
+
+                                        break;
+                                    case Model.PropertyTypeValues.Item:
+
+                                        if (reader.IsDBNull(cnt))
+                                        {
+                                            item.AddProperty(new Property(item, proptype, null));
+                                        }
+                                        else
+                                        {
+                                            Guid branchid = reader.GetGuid(cnt);
+                                            Model.ItemType itemtype = ((Model.PropertyTypes.Item)proptype).ItemType;
+                                            Database.IItem propitem = this.Session.Table(itemtype).Select(branchid);
+                                            item.AddProperty(new Property(item, proptype, propitem));
+                                        }
+
+                                        break;
+
+                                    case Model.PropertyTypeValues.String:
+
+                                        if (reader.IsDBNull(cnt))
+                                        {
+                                            item.AddProperty(new Property(item, proptype, reader.GetString(cnt)));
+                                        }
+                                        else
+                                        {
+                                            item.AddProperty(new Property(item, proptype, reader.GetString(cnt)));
+                                        }
+
+                                        break;
+                                }
+
+                                cnt++;
+                            }
+
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
+
+            return items;
+        }
+
         public override string ToString()
         {
             return this.ItemType.Name;

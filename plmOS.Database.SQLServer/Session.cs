@@ -44,6 +44,11 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        internal Table Table(Model.ItemType ItemType)
+        {
+            return this.TableCache[ItemType];
+        }
+
         public void Create(Model.RelationshipType RelationshipType)
         {
             if (!this.TableCache.ContainsKey(RelationshipType))
@@ -78,6 +83,11 @@ namespace plmOS.Database.SQLServer
         public void Supercede(IItem Item, System.Int64 Time, ITransaction Transaction)
         {
 
+        }
+
+        public IEnumerable<IItem> Get(Model.Queries.Item Query)
+        {
+            return this.TableCache[Query.ItemType].Select(Query);
         }
 
         public Session(String Connection)
