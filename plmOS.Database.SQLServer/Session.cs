@@ -57,9 +57,22 @@ namespace plmOS.Database.SQLServer
             return new Transaction(this);
         }
 
+        private void Insert(IItem Item, Model.ItemType ItemType, Transaction Transaction)
+        {
+            // Insert into base table
+
+            if (ItemType.BaseItemType != null)
+            {
+                this.Insert(Item, ItemType.BaseItemType, Transaction);
+            }
+
+            // Insert into Table
+            this.TableCache[ItemType].Insert(Item, Transaction);
+        }
+
         public void Create(IItem Item, ITransaction Transaction)
         {
-
+            this.Insert(Item, Item.ItemType, (Transaction)Transaction);
         }
 
         public void Supercede(IItem Item, System.Int64 Time, ITransaction Transaction)

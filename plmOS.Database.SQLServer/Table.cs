@@ -229,6 +229,56 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        internal void Insert(IItem Item, Transaction Transaction)
+        {
+            String sql = "insert into " + this.Name;
+
+            if (this.ItemType.Name == BaseItemName)
+            {
+                sql += " (versionid,branchid,itemid,branched,versioned,superceded) values ('" + Item.VersionID + "','" + Item.BranchID + "','" + Item.ItemID + "'," + Item.Branched + "," + Item.Versioned + "," + Item.Superceded + ");";
+            }
+            else
+            {
+                sql += "(versionid";
+                String sqlvalues = "('" + Item.VersionID + "'";
+
+                foreach (IProperty property in Item.Properties)
+                {
+                    if (property.PropertyType.ItemType.Equals(this.ItemType))
+                    {
+                        sql += "," + property.PropertyType.Name.ToLower();
+
+                        if (property.Object == null)
+                        {
+                            sqlvalues += ",";
+                        }
+                        else
+                        {
+                            switch (property.PropertyType.Type)
+                            {
+                                case Model.PropertyTypeValues.Double:
+                                    sqlvalues += "," + property.Object;
+                                    break;
+                                case Model.PropertyTypeValues.String:
+                                    sqlvalues += ",'" + property.Object + "'";
+                                    break;
+                                case Model.PropertyTypeValues.Item:
+                                    sqlvalues += ",'" + ((IItem)property.Object).BranchID + "'";
+                                    break;
+                            }
+                        }
+                    }
+                }
+
+                sql += ") values " + sqlvalues + ");";
+            }
+
+            using (SqlCommand command = new SqlCommand(sql, Transaction.SQLConnection, Transaction.SQLTransaction))
+            {
+                int res = command.ExecuteNonQuery();
+            }
+        }
+
         public override string ToString()
         {
             return this.ItemType.Name;

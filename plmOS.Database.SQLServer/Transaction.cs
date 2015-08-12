@@ -59,6 +59,7 @@ namespace plmOS.Database.SQLServer
         {
             this.Session = Session;
             this.SQLConnection = new SqlConnection(this.Session.Connection);
+            this.SQLConnection.Open();
             this.SQLTransaction = this.SQLConnection.BeginTransaction();
         }
     }
