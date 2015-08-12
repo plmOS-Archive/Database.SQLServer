@@ -27,11 +27,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.SqlClient;
 
 namespace plmOS.Database.SQLServer
 {
     internal class Table
     {
+        private const String BaseItemName = "plmOS.Model.Item";
+
         internal Session Session { get; private set; }
 
         internal Model.ItemType ItemType { get; private set; }
@@ -45,9 +48,185 @@ namespace plmOS.Database.SQLServer
             }
         }
 
-        internal void Create()
-        {
+        private Dictionary<String, Column> _columns;
 
+        internal IEnumerable<Column> Columns
+        {
+            get
+            {
+                return this._columns.Values;
+            }
+        }
+
+        internal Column Column(String Name)
+        {
+            return this._columns[Name];
+        }
+
+        internal Boolean HasColumn(String Name)
+        {
+            return this._columns.ContainsKey(Name);
+        }
+
+        private Boolean Exists { get; set; }
+
+        private void CheckColumns()
+        {
+            // Load Columns already defined in Database
+            this._columns = new Dictionary<String, Column>();
+
+            String sql = "select column_name,data_type,is_nullable,character_maximum_length from information_schema.columns where table_name='" + this.Name + "'";
+
+            using (SqlConnection connection = new SqlConnection(this.Session.Connection))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            this.Exists = true;
+
+                            while (reader.Read())
+                            {
+                                // Get Max Length
+                                int maxlength = -1;
+
+                                if (!reader.IsDBNull(3))
+                                {
+                                    maxlength = reader.GetInt32(3);
+                                }
+
+                                // Get Primary Key
+                                Boolean primarykey = false;
+
+                                this._columns[reader.GetString(0)] = new Column(this, reader.GetString(0), reader.GetString(1), reader.GetString(2).Equals("YES"), maxlength, primarykey, true);
+                            }
+                        }
+                        else
+                        {
+                            this.Exists = false;
+                        }
+                    }
+                }
+            }
+
+            // Add Columns required by ItemType
+
+            if (!this.HasColumn("versionid"))
+            {
+                this._columns["versionid"] = new Column(this, "versionid", "uniqueidentifier", false, -1, true, false);
+            }
+
+            if (this.ItemType.Name.Equals(BaseItemName))
+            {
+                if (!this.HasColumn("branchid"))
+                {
+                    this._columns["branchid"] = new Column(this, "branchid", "uniqueidentifier", false, -1, false, false);
+                }
+
+                if (!this.HasColumn("itemid"))
+                {
+                    this._columns["itemid"] = new Column(this, "itemid", "uniqueidentifier", false, -1, false, false);
+                }
+
+                if (!this.HasColumn("branched"))
+                {
+                    this._columns["branched"] = new Column(this, "branched", "bigint", false, -1, false, false);
+                }
+
+                if (!this.HasColumn("versioned"))
+                {
+                    this._columns["versioned"] = new Column(this, "versioned", "bigint", false, -1, false, false);
+                }
+
+                if (!this.HasColumn("superceded"))
+                {
+                    this._columns["superceded"] = new Column(this, "superceded", "bigint", false, -1, false, false);
+                }
+            }
+
+            foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
+            {
+                if (this.ItemType.Equals(proptype.ItemType))
+                {
+                    String colname = proptype.Name.ToLower();
+
+                    if (!this.HasColumn(colname))
+                    {
+                        switch (proptype.Type)
+                        {
+                            case Model.PropertyTypeValues.Double:
+                                this._columns[colname] = new Column(this, colname, "float", true, -1, false, false);
+                                break;
+
+                            case Model.PropertyTypeValues.String:
+                                this._columns[colname] = new Column(this, colname, "nvarchar", true, ((Model.PropertyTypes.String)proptype).Length, false, false);
+                                break;
+
+                            case Model.PropertyTypeValues.Item:
+                                this._columns[colname] = new Column(this, colname, "uniqueidentifier", true, -1, false, false);
+                                break;
+                        }
+                    }
+                }
+            }
+
+            if (this.Exists)
+            {
+                // Update Table
+
+                foreach(Column col in this.Columns)
+                {
+                    if (!col.Exists)
+                    {
+                        // Add Column
+                        String addcolsql = "alter table " + this.Name + " add " + col.Name + " " + col.Type + ";";
+
+                        using (SqlConnection connection = new SqlConnection(this.Session.Connection))
+                        {
+                            connection.Open();
+
+                            using (SqlTransaction transaction = connection.BeginTransaction())
+                            {
+                                using (SqlCommand command = new SqlCommand(addcolsql, connection, transaction))
+                                {
+                                    int res = command.ExecuteNonQuery();
+                                    transaction.Commit();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Create Table
+                String createsql = "create table " + this.Name + "(";
+
+                foreach(Column col in this.Columns)
+                {
+                    createsql += col.SQL + ",";
+                }
+
+                createsql += ");";
+
+                using (SqlConnection connection = new SqlConnection(this.Session.Connection))
+                {
+                    connection.Open();
+
+                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    {
+                        using (SqlCommand command = new SqlCommand(createsql, connection, transaction))
+                        {
+                            int res = command.ExecuteNonQuery();
+                            transaction.Commit();
+                        }
+                    }
+                }
+            }
         }
 
         public override string ToString()
@@ -62,6 +241,9 @@ namespace plmOS.Database.SQLServer
 
             // Set Name
             this._name = this.ItemType.Name.ToLower().Replace('.', '_');
+
+            // Load Columns
+            this.CheckColumns();
         }
     }
 }

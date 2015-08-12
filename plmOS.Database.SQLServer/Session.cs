@@ -41,7 +41,6 @@ namespace plmOS.Database.SQLServer
             if (!this.TableCache.ContainsKey(ItemType))
             {
                 this.TableCache[ItemType] = new Table(this, ItemType);
-                this.TableCache[ItemType].Create();
             }
         }
 
@@ -50,7 +49,6 @@ namespace plmOS.Database.SQLServer
             if (!this.TableCache.ContainsKey(RelationshipType))
             {
                 this.TableCache[RelationshipType] = new Table(this, RelationshipType);
-                this.TableCache[RelationshipType].Create();
             }
         }
 
