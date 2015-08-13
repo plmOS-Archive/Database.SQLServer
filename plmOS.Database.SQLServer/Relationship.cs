@@ -30,48 +30,47 @@ using System.Threading.Tasks;
 
 namespace plmOS.Database.SQLServer
 {
-    public class Item : Database.IItem
+    public class Relationship : Item, Database.IRelationship
     {
-        internal Session Session { get; private set; }
-
-        public virtual Model.ItemType ItemType { get; internal set; }
-
-        public Guid ItemID { get; internal set; }
-
-        public Guid BranchID { get; internal set; }
-
-        public Guid VersionID { get; internal set; }
-
-        public Int64 Branched { get; internal set; }
-
-        public Int64 Versioned { get; internal set; }
-
-        public Int64 Superceded { get; internal set; }
-
-        private Dictionary<Model.PropertyType, Property> _properties;
-
-        public IEnumerable<IProperty> Properties
+        public Model.RelationshipType RelationshipType
         {
             get
             {
-                return this._properties.Values;
+                return (Model.RelationshipType)this.ItemType;
+            }
+            internal set
+            {
+                this.ItemType = value;
             }
         }
 
-        public IProperty Property(Model.PropertyType PropertyType)
+        public override Model.ItemType ItemType
         {
-            return this._properties[PropertyType];
+            get
+            {
+                return base.ItemType;
+            }
+            internal set
+            {
+                if (value is Model.RelationshipType)
+                {
+                    base.ItemType = value;
+                }
+                else
+                {
+                    throw new ArgumentException("Must be a RelationshipType");
+                }
+            }
         }
 
-        internal void AddProperty(Property Property)
-        {
-            this._properties[Property.PropertyType] = Property;
-        }
+        public Properties.IItem Parent { get; internal set; }
 
-        internal Item(Session Session)
+        public Properties.IItem Child { get; internal set; }
+
+        internal Relationship(Session Session)
+            :base(Session)
         {
-            this.Session = Session;
-            this._properties = new Dictionary<Model.PropertyType, Property>();
+
         }
     }
 }

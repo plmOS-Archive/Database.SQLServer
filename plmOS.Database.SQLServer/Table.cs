@@ -33,9 +33,55 @@ namespace plmOS.Database.SQLServer
 {
     internal class Table
     {
-        private const String BaseItemName = "plmOS.Model.Item";
-
         internal Session Session { get; private set; }
+
+        internal Model.ItemType RootItemType
+        {
+            get
+            {
+                return this.Session.RootItemType;
+            }
+        }
+
+        internal Table RootItemTable
+        {
+            get
+            {
+                return this.Session.RootItemTable;
+            }
+        }
+
+        private String RootItemTableName
+        {
+            get
+            {
+                return this.RootItemTable.Name;
+            }
+        }
+
+        internal Model.RelationshipType RootRelationshipType
+        {
+            get
+            {
+                return this.Session.RootRelationshipType;
+            }
+        }
+
+        internal Table RootRelationshipTable
+        {
+            get
+            {
+                return this.Session.RootRelationshipTable;
+            }
+        }
+
+        private String RootRelationshipTableName
+        {
+            get
+            {
+                return this.RootRelationshipTable.Name;
+            }
+        }
 
         internal Model.ItemType ItemType { get; private set; }
 
@@ -120,7 +166,7 @@ namespace plmOS.Database.SQLServer
                 this._columns["versionid"] = new Column(this, "versionid", "uniqueidentifier", false, -1, true, false);
             }
 
-            if (this.ItemType.Name.Equals(BaseItemName))
+            if (this.ItemType.Equals(this.RootItemType))
             {
                 if (!this.HasColumn("branchid"))
                 {
@@ -150,7 +196,7 @@ namespace plmOS.Database.SQLServer
 
             foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
             {
-                if (this.ItemType.Equals(proptype.ItemType))
+                if (!proptype.IsInherited)
                 {
                     String colname = proptype.Name.ToLower();
 
@@ -233,7 +279,7 @@ namespace plmOS.Database.SQLServer
         {
             String sql = "insert into " + this.Name;
 
-            if (this.ItemType.Name == BaseItemName)
+            if (this.ItemType.Equals(this.RootItemType))
             {
                 sql += " (versionid,branchid,itemid,branched,versioned,superceded) values ('" + Item.VersionID + "','" + Item.BranchID + "','" + Item.ItemID + "'," + Item.Branched + "," + Item.Versioned + "," + Item.Superceded + ");";
             }
@@ -242,10 +288,11 @@ namespace plmOS.Database.SQLServer
                 sql += "(versionid";
                 String sqlvalues = "('" + Item.VersionID + "'";
 
-                foreach (IProperty property in Item.Properties)
+                foreach (Model.PropertyType proptype in this.ItemType.PropertyTypes)
                 {
-                    if (property.PropertyType.ItemType.Equals(this.ItemType))
+                    if (!proptype.IsInherited)
                     {
+                        IProperty property = Item.Property(proptype);
                         sql += "," + property.PropertyType.Name.ToLower();
 
                         if (property.Object == null)
@@ -283,11 +330,11 @@ namespace plmOS.Database.SQLServer
         {
             get
             {
-                String sql = this.RootTableName + ".versionid," + this.RootTableName + ".branchid," + this.RootTableName + ".itemid," + this.RootTableName + ".branched," + this.RootTableName + ".versioned," + this.RootTableName + ".superceded";
+                String sql = this.RootItemTableName + ".versionid," + this.RootItemTableName + ".branchid," + this.RootItemTableName + ".itemid," + this.RootItemTableName + ".branched," + this.RootItemTableName + ".versioned," + this.RootItemTableName + ".superceded";
 
                 foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
                 {
-                    sql += "," + this.Session.Table(proptype.ItemType).Name + "." + proptype.Name.ToLower();
+                    sql += "," + this.Session.Table(proptype.DefinitionItemType).Name + "." + proptype.Name.ToLower();
                 }
 
                 return sql;
@@ -298,7 +345,7 @@ namespace plmOS.Database.SQLServer
         {
             get
             {
-                if (this.ItemType.Name == BaseItemName)
+                if (this.ItemType.Equals(this.RootItemType))
                 {
                     return this.Name;
                 }
@@ -306,20 +353,6 @@ namespace plmOS.Database.SQLServer
                 {
                     return this.Session.Table(this.ItemType.BaseItemType).TablesSQL + " inner join " + this.Name + " on " + this.Session.Table(this.ItemType.BaseItemType).Name + ".versionid=" + this.Name + ".versionid";
                 }
-            }
-        }
-
-        private String _rootTableName;
-        private String RootTableName
-        {
-            get
-            {
-                if (this._rootTableName == null)
-                {
-                    this._rootTableName = this.Session.Table(this.ItemType.RootItemType).Name;
-                }
-
-                return this._rootTableName;
             }
         }
 
@@ -421,16 +454,20 @@ namespace plmOS.Database.SQLServer
 
             if (Query.Condition != null)
             {
-                sql += " where " + this.ConditionSQL(Query.Condition);
+                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.ConditionSQL(Query.Condition) + "))";
+            }
+            else
+            {
+                sql += " where (" + this.RootItemTableName + ".superceded=-1)";
             }
 
-            return this.Select(sql);
+            return this.SelectItems(sql);
         }
 
         internal Database.IItem Select(Guid BranchID)
         {
-            String sql = "select " + this.ColumnsSQL + " from " + this.TablesSQL + " where " + this.RootTableName + ".branchid='" + BranchID + "' and " + this.RootTableName + ".superceded=-1";
-            IEnumerable<Database.IItem> results = this.Select(sql);
+            String sql = "select " + this.ColumnsSQL + " from " + this.TablesSQL + " where ((" + this.RootItemTableName + ".branchid='" + BranchID + "') and (" + this.RootItemTableName + ".superceded=-1))";
+            IEnumerable<Database.IItem> results = this.SelectItems(sql);
 
             if (results.Count() > 0)
             {
@@ -442,7 +479,86 @@ namespace plmOS.Database.SQLServer
             }
         }
 
-        private IEnumerable<Database.IItem> Select(String SQL)
+        internal IEnumerable<Database.IRelationship> Select(Model.Queries.Relationship Query)
+        {
+            String sql = "select " + this.ColumnsSQL + " from " + this.TablesSQL;
+
+            if (Query.Condition != null)
+            {
+                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parent='" + Query.Parent.BranchID + "') and (" + this.ConditionSQL(Query.Condition) + "))";
+            }
+            else
+            {
+                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parent='" + Query.Parent.BranchID + "'))";
+            }
+
+            return this.SelectRelationships(sql);
+        }
+
+        private void SetItemProperties(Item Item, SqlDataReader Reader)
+        {
+            
+            Item.ItemType = this.ItemType;
+            Item.VersionID = Reader.GetGuid(0);
+            Item.BranchID = Reader.GetGuid(1);
+            Item.ItemID = Reader.GetGuid(2);
+            Item.Branched = Reader.GetInt64(3);
+            Item.Versioned = Reader.GetInt64(4);
+            Item.Superceded = Reader.GetInt64(5);
+
+            int cnt = 6;
+
+            foreach (Model.PropertyType proptype in this.ItemType.PropertyTypes)
+            {
+                switch (proptype.Type)
+                {
+                    case Model.PropertyTypeValues.Double:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, null));
+                        }
+                        else
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetDouble(cnt)));
+                        }
+
+                        break;
+                    case Model.PropertyTypeValues.Item:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, null));
+                        }
+                        else
+                        {
+                            Guid branchid = Reader.GetGuid(cnt);
+                            Model.ItemType itemtype = ((Model.PropertyTypes.Item)proptype).PropertyItemType;
+                            Database.IItem propitem = this.Session.Table(itemtype).Select(branchid);
+                            Item.AddProperty(new Property(Item, proptype, propitem));
+                        }
+
+                        break;
+
+                    case Model.PropertyTypeValues.String:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetString(cnt)));
+                        }
+                        else
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetString(cnt)));
+                        }
+
+                        break;
+                }
+
+                cnt++;
+            }
+        }
+
+        private IEnumerable<Database.IItem> SelectItems(String SQL)
         {
             List<Database.IItem> items = new List<Database.IItem>();
 
@@ -457,65 +573,32 @@ namespace plmOS.Database.SQLServer
                         while(reader.Read())
                         {
                             Item item = new Item(this.Session);
-                            item.ItemType = this.ItemType;
-                            item.VersionID = reader.GetGuid(0);
-                            item.BranchID = reader.GetGuid(1);
-                            item.ItemID = reader.GetGuid(2);
-                            item.Branched = reader.GetInt64(3);
-                            item.Versioned = reader.GetInt64(4);
-                            item.Superceded = reader.GetInt64(5);
+                            this.SetItemProperties(item, reader);
+                            items.Add(item);
+                        }
+                    }
+                }
+            }
 
-                            int cnt = 6;
+            return items;
+        }
 
-                            foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
-                            {
-                                switch(proptype.Type)
-                                {
-                                    case Model.PropertyTypeValues.Double:
+        private IEnumerable<Database.IRelationship> SelectRelationships(String SQL)
+        {
+            List<Database.IRelationship> items = new List<Database.IRelationship>();
 
-                                        if (reader.IsDBNull(cnt))
-                                        {
-                                            item.AddProperty(new Property(item, proptype, null));
-                                        }
-                                        else
-                                        {
-                                            item.AddProperty(new Property(item, proptype, reader.GetDouble(cnt)));
-                                        }
+            using (SqlConnection connection = new SqlConnection(this.Session.Connection))
+            {
+                connection.Open();
 
-                                        break;
-                                    case Model.PropertyTypeValues.Item:
-
-                                        if (reader.IsDBNull(cnt))
-                                        {
-                                            item.AddProperty(new Property(item, proptype, null));
-                                        }
-                                        else
-                                        {
-                                            Guid branchid = reader.GetGuid(cnt);
-                                            Model.ItemType itemtype = ((Model.PropertyTypes.Item)proptype).ItemType;
-                                            Database.IItem propitem = this.Session.Table(itemtype).Select(branchid);
-                                            item.AddProperty(new Property(item, proptype, propitem));
-                                        }
-
-                                        break;
-
-                                    case Model.PropertyTypeValues.String:
-
-                                        if (reader.IsDBNull(cnt))
-                                        {
-                                            item.AddProperty(new Property(item, proptype, reader.GetString(cnt)));
-                                        }
-                                        else
-                                        {
-                                            item.AddProperty(new Property(item, proptype, reader.GetString(cnt)));
-                                        }
-
-                                        break;
-                                }
-
-                                cnt++;
-                            }
-
+                using (SqlCommand command = new SqlCommand(SQL, connection))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Relationship item = new Relationship(this.Session);
+                            this.SetItemProperties(item, reader);
                             items.Add(item);
                         }
                     }

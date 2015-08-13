@@ -32,7 +32,30 @@ namespace plmOS.Database.SQLServer
 {
     public class Session : ISession
     {
+        private const String RootItemTypeName = "plmOS.Model.Item";
+        private const String RootRelationshipTypeName = "plmOS.Model.Relationship";
+
         public String Connection { get; private set; }
+
+        internal Model.ItemType RootItemType { get; private set; }
+
+        internal Table RootItemTable
+        {
+            get
+            {
+                return this.TableCache[this.RootItemType];
+            }
+        }
+
+        internal Model.RelationshipType RootRelationshipType { get; private set; }
+
+        internal Table RootRelationshipTable
+        {
+            get
+            {
+                return this.TableCache[this.RootRelationshipType];
+            }
+        }
 
         private Dictionary<Model.ItemType, Table> TableCache;
 
@@ -40,6 +63,11 @@ namespace plmOS.Database.SQLServer
         {
             if (!this.TableCache.ContainsKey(ItemType))
             {
+                if (ItemType.Name.Equals(RootItemTypeName))
+                {
+                    this.RootItemType = ItemType;
+                }
+
                 this.TableCache[ItemType] = new Table(this, ItemType);
             }
         }
@@ -53,6 +81,11 @@ namespace plmOS.Database.SQLServer
         {
             if (!this.TableCache.ContainsKey(RelationshipType))
             {
+                if (RelationshipType.Name.Equals(RootRelationshipTypeName))
+                {
+                    this.RootRelationshipType = RelationshipType;
+                }
+
                 this.TableCache[RelationshipType] = new Table(this, RelationshipType);
             }
         }
@@ -86,6 +119,11 @@ namespace plmOS.Database.SQLServer
         }
 
         public IEnumerable<IItem> Get(Model.Queries.Item Query)
+        {
+            return this.TableCache[Query.ItemType].Select(Query);
+        }
+
+        public IEnumerable<IRelationship> Get(Model.Queries.Relationship Query)
         {
             return this.TableCache[Query.ItemType].Select(Query);
         }
