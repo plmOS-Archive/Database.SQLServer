@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.SqlClient;
 
 namespace plmOS.Database.SQLServer
 {
@@ -113,9 +114,14 @@ namespace plmOS.Database.SQLServer
             this.Insert(Item, Item.ItemType, (Transaction)Transaction);
         }
 
-        public void Supercede(IItem Item, System.Int64 Time, ITransaction Transaction)
+        public void Supercede(IItem Item, ITransaction Transaction)
         {
+            String sql = "update " + this.RootItemTable.Name + " set superceded=" + Item.Superceded + " where versionid='" + Item.VersionID + "';";
 
+            using(SqlCommand command = new SqlCommand(sql, ((Transaction)Transaction).SQLConnection, ((Transaction)Transaction).SQLTransaction))
+            {
+                command.ExecuteNonQuery();
+            }
         }
 
         public IEnumerable<IItem> Get(Model.Queries.Item Query)
