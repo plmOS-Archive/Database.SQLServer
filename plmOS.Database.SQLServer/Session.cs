@@ -28,15 +28,36 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
+using System.IO;
 
 namespace plmOS.Database.SQLServer
 {
     public class Session : ISession
     {
         private const String RootItemTypeName = "plmOS.Model.Item";
+        private const String RootFileTypeName = "plmOS.Model.File";
         private const String RootRelationshipTypeName = "plmOS.Model.Relationship";
 
         public String Connection { get; private set; }
+
+        private DirectoryInfo _vaultDirectory;
+        public DirectoryInfo VaultDirectory 
+        { 
+            get
+            {
+                return this._vaultDirectory;
+            }
+            private set
+            {
+                this._vaultDirectory = value;
+
+                // Ensure Vault Directory Exists
+                if (!this._vaultDirectory.Exists)
+                {
+                    this._vaultDirectory.Create();
+                }
+            }
+        }
 
         internal Model.ItemType RootItemType { get; private set; }
 
@@ -47,6 +68,8 @@ namespace plmOS.Database.SQLServer
                 return this.TableCache[this.RootItemType];
             }
         }
+
+        internal Model.ItemType RootFileType { get; private set; }
 
         internal Model.RelationshipType RootRelationshipType { get; private set; }
 
@@ -67,6 +90,10 @@ namespace plmOS.Database.SQLServer
                 if (ItemType.Name.Equals(RootItemTypeName))
                 {
                     this.RootItemType = ItemType;
+                }
+                else if (ItemType.Name.Equals(RootFileTypeName))
+                {
+                    this.RootFileType = ItemType;
                 }
 
                 this.TableCache[ItemType] = new Table(this, ItemType);
@@ -134,9 +161,27 @@ namespace plmOS.Database.SQLServer
             return this.TableCache[Query.ItemType].Select(Query);
         }
 
-        public Session(String Connection)
+        private FileInfo VaultFile(IFile File)
+        {
+            return new FileInfo(this.VaultDirectory.FullName + "\\" + File.VersionID + ".dat");
+        }
+
+        public FileStream ReadFromVault(IFile File)
+        {
+            FileInfo vaultfile = this.VaultFile(File);
+            return new FileStream(vaultfile.FullName, FileMode.Open);
+        }
+
+        public FileStream WriteToVault(IFile File) 
+        {
+            FileInfo vaultfile = this.VaultFile(File);
+            return new FileStream(vaultfile.FullName, FileMode.Create);
+        }
+
+        public Session(String Connection, DirectoryInfo VaultDirectory)
         {
             this.Connection = Connection;
+            this.VaultDirectory = VaultDirectory;
             this.TableCache = new Dictionary<Model.ItemType, Table>();
         }
     }

@@ -308,23 +308,7 @@ namespace plmOS.Database.SQLServer
                         IProperty property = Item.Property(proptype);
                         sql += "," + property.PropertyType.Name.ToLower();
 
-                        if (property.Object == null)
-                        {
-                            sqlvalues += ",";
-                        }
-                        else
-                        {
-                            switch (property.PropertyType.Type)
-                            {
-                                case Model.PropertyTypeValues.Double:
-                                    sqlvalues += "," + property.Object;
-                                    break;
-                                case Model.PropertyTypeValues.String:
-                                case Model.PropertyTypeValues.Item:
-                                    sqlvalues += ",'" + property.Object + "'";
-                                    break;
-                            }
-                        }
+                        sqlvalues += "," + this.ValueSQL(proptype, property.Object);
                     }
                 }
 
@@ -601,9 +585,18 @@ namespace plmOS.Database.SQLServer
                     {
                         while(reader.Read())
                         {
-                            Item item = new Item(this.Session);
-                            this.SetItemProperties(item, reader);
-                            items.Add(item);
+                            if (this.ItemType.Equals(this.Session.RootFileType))
+                            {
+                                File item = new File(this.Session);
+                                this.SetItemProperties(item, reader);
+                                items.Add(item);
+                            }
+                            else
+                            {
+                                Item item = new Item(this.Session);
+                                this.SetItemProperties(item, reader);
+                                items.Add(item);
+                            }
                         }
                     }
                 }
