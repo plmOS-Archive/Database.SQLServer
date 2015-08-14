@@ -63,9 +63,7 @@ namespace plmOS.Database.SQLServer
             }
         }
 
-        public Properties.IItem Parent { get; internal set; }
-
-        public Properties.IItem Child { get; internal set; }
+        public Guid ParentBranchID { get; internal set; }
 
         internal Relationship(Session Session)
             :base(Session)

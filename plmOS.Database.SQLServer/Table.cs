@@ -193,28 +193,37 @@ namespace plmOS.Database.SQLServer
                     this._columns["superceded"] = new Column(this, "superceded", "bigint", false, -1, false, false);
                 }
             }
-
-            foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
+            else if (this.ItemType.Equals(this.RootRelationshipType))
             {
-                if (!proptype.IsInherited)
+                if (!this.HasColumn("parentbranchid"))
                 {
-                    String colname = proptype.Name.ToLower();
-
-                    if (!this.HasColumn(colname))
+                    this._columns["parentbranchid"] = new Column(this, "parentbranchid", "uniqueidentifier", false, -1, false, false);
+                }
+            }
+            else
+            {
+                foreach (Model.PropertyType proptype in this.ItemType.PropertyTypes)
+                {
+                    if (!proptype.IsInherited)
                     {
-                        switch (proptype.Type)
+                        String colname = proptype.Name.ToLower();
+
+                        if (!this.HasColumn(colname))
                         {
-                            case Model.PropertyTypeValues.Double:
-                                this._columns[colname] = new Column(this, colname, "float", true, -1, false, false);
-                                break;
+                            switch (proptype.Type)
+                            {
+                                case Model.PropertyTypeValues.Double:
+                                    this._columns[colname] = new Column(this, colname, "float", true, -1, false, false);
+                                    break;
 
-                            case Model.PropertyTypeValues.String:
-                                this._columns[colname] = new Column(this, colname, "nvarchar", true, ((Model.PropertyTypes.String)proptype).Length, false, false);
-                                break;
+                                case Model.PropertyTypeValues.String:
+                                    this._columns[colname] = new Column(this, colname, "nvarchar", true, ((Model.PropertyTypes.String)proptype).Length, false, false);
+                                    break;
 
-                            case Model.PropertyTypeValues.Item:
-                                this._columns[colname] = new Column(this, colname, "uniqueidentifier", true, -1, false, false);
-                                break;
+                                case Model.PropertyTypeValues.Item:
+                                    this._columns[colname] = new Column(this, colname, "uniqueidentifier", true, -1, false, false);
+                                    break;
+                            }
                         }
                     }
                 }
@@ -283,9 +292,13 @@ namespace plmOS.Database.SQLServer
             {
                 sql += " (versionid,branchid,itemid,branched,versioned,superceded) values ('" + Item.VersionID + "','" + Item.BranchID + "','" + Item.ItemID + "'," + Item.Branched + "," + Item.Versioned + "," + Item.Superceded + ");";
             }
+            else if (this.ItemType.Equals(this.RootRelationshipType))
+            {
+                sql += " (versionid,parentbranchid) values ('" + Item.VersionID + "','" + ((Database.IRelationship)Item).ParentBranchID + "');";
+            }
             else
             {
-                sql += "(versionid";
+                sql += " (versionid";
                 String sqlvalues = "('" + Item.VersionID + "'";
 
                 foreach (Model.PropertyType proptype in this.ItemType.PropertyTypes)
@@ -307,10 +320,8 @@ namespace plmOS.Database.SQLServer
                                     sqlvalues += "," + property.Object;
                                     break;
                                 case Model.PropertyTypeValues.String:
-                                    sqlvalues += ",'" + property.Object + "'";
-                                    break;
                                 case Model.PropertyTypeValues.Item:
-                                    sqlvalues += ",'" + ((IItem)property.Object).BranchID + "'";
+                                    sqlvalues += ",'" + property.Object + "'";
                                     break;
                             }
                         }
@@ -331,6 +342,11 @@ namespace plmOS.Database.SQLServer
             get
             {
                 String sql = this.RootItemTableName + ".versionid," + this.RootItemTableName + ".branchid," + this.RootItemTableName + ".itemid," + this.RootItemTableName + ".branched," + this.RootItemTableName + ".versioned," + this.RootItemTableName + ".superceded";
+
+                if (this.ItemType.IsSubclassOf(this.RootRelationshipType))
+                {
+                    sql += "," + this.RootRelationshipTableName + ".parentbranchid";
+                }
 
                 foreach(Model.PropertyType proptype in this.ItemType.PropertyTypes)
                 {
@@ -390,8 +406,6 @@ namespace plmOS.Database.SQLServer
                     case Model.PropertyTypeValues.Double:
                         return Value.ToString();
                     case Model.PropertyTypeValues.Item:
-                        return "'" + ((Database.IItem)Value).BranchID.ToString() + "'";
-
                     case Model.PropertyTypeValues.String:
                         return "'" + Value.ToString() + "'";
                     default:
@@ -485,28 +499,19 @@ namespace plmOS.Database.SQLServer
 
             if (Query.Condition != null)
             {
-                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parent='" + Query.Parent.BranchID + "') and (" + this.ConditionSQL(Query.Condition) + "))";
+                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parentbranchid='" + Query.Parent.BranchID + "') and (" + this.ConditionSQL(Query.Condition) + "))";
             }
             else
             {
-                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parent='" + Query.Parent.BranchID + "'))";
+                sql += " where ((" + this.RootItemTableName + ".superceded=-1) and (" + this.RootRelationshipTableName + ".parentbranchid='" + Query.Parent.BranchID + "'))";
             }
 
             return this.SelectRelationships(sql);
         }
 
-        private void SetItemProperties(Item Item, SqlDataReader Reader)
+        private void SetItemProperties(Item Item, SqlDataReader Reader, int StartIndex)
         {
-            
-            Item.ItemType = this.ItemType;
-            Item.VersionID = Reader.GetGuid(0);
-            Item.BranchID = Reader.GetGuid(1);
-            Item.ItemID = Reader.GetGuid(2);
-            Item.Branched = Reader.GetInt64(3);
-            Item.Versioned = Reader.GetInt64(4);
-            Item.Superceded = Reader.GetInt64(5);
-
-            int cnt = 6;
+            int cnt = StartIndex;
 
             foreach (Model.PropertyType proptype in this.ItemType.PropertyTypes)
             {
@@ -558,6 +563,30 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        private void SetItemCommonProperties(Item Item, SqlDataReader Reader)
+        {
+            Item.ItemType = this.ItemType;
+            Item.VersionID = Reader.GetGuid(0);
+            Item.BranchID = Reader.GetGuid(1);
+            Item.ItemID = Reader.GetGuid(2);
+            Item.Branched = Reader.GetInt64(3);
+            Item.Versioned = Reader.GetInt64(4);
+            Item.Superceded = Reader.GetInt64(5);
+        }
+
+        private void SetRelationshipProperties(Relationship Relationship, SqlDataReader Reader)
+        {
+            this.SetItemCommonProperties(Relationship, Reader);
+            Relationship.ParentBranchID = Reader.GetGuid(6);
+            this.SetItemProperties(Relationship, Reader, 7);
+        }
+
+        private void SetItemProperties(Item Item, SqlDataReader Reader)
+        {
+            this.SetItemCommonProperties(Item, Reader);
+            this.SetItemProperties(Item, Reader, 6);
+        }
+
         private IEnumerable<Database.IItem> SelectItems(String SQL)
         {
             List<Database.IItem> items = new List<Database.IItem>();
@@ -598,7 +627,7 @@ namespace plmOS.Database.SQLServer
                         while (reader.Read())
                         {
                             Relationship item = new Relationship(this.Session);
-                            this.SetItemProperties(item, reader);
+                            this.SetRelationshipProperties(item, reader);
                             items.Add(item);
                         }
                     }
