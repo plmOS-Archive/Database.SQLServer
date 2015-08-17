@@ -223,6 +223,13 @@ namespace plmOS.Database.SQLServer
                                 case Model.PropertyTypeValues.Item:
                                     this._columns[colname] = new Column(this, colname, "uniqueidentifier", true, -1, false, false);
                                     break;
+
+                                case Model.PropertyTypeValues.DateTime:
+                                    this._columns[colname] = new Column(this, colname, "datetime", true, -1, false, false);
+                                    break;
+
+                                default:
+                                    throw new NotImplementedException("PropertyType not implemented: " + proptype.Type);
                             }
                         }
                     }
@@ -392,6 +399,8 @@ namespace plmOS.Database.SQLServer
                     case Model.PropertyTypeValues.Item:
                     case Model.PropertyTypeValues.String:
                         return "'" + Value.ToString() + "'";
+                    case Model.PropertyTypeValues.DateTime:
+                        return "'" + ((System.DateTime)Value).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fff") + "'";
                     default:
                         throw new NotImplementedException("Invalid PropertyType: " + PropertyType.Type);
                 }
@@ -533,7 +542,7 @@ namespace plmOS.Database.SQLServer
 
                         if (Reader.IsDBNull(cnt))
                         {
-                            Item.AddProperty(new Property(Item, proptype, Reader.GetString(cnt)));
+                            Item.AddProperty(new Property(Item, proptype, null));
                         }
                         else
                         {
@@ -541,6 +550,22 @@ namespace plmOS.Database.SQLServer
                         }
 
                         break;
+
+                    case Model.PropertyTypeValues.DateTime:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, null));
+                        }
+                        else
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetDateTime(cnt)));
+                        }
+
+                        break;
+
+                    default:
+                        throw new NotImplementedException("PropertyType not implemented: " + proptype.Type);
                 }
 
                 cnt++;
