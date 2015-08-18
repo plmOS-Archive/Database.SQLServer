@@ -532,8 +532,7 @@ namespace plmOS.Database.SQLServer
                         {
                             Guid branchid = Reader.GetGuid(cnt);
                             Model.ItemType itemtype = ((Model.PropertyTypes.Item)proptype).PropertyItemType;
-                            Database.IItem propitem = this.Session.Table(itemtype).Select(branchid);
-                            Item.AddProperty(new Property(Item, proptype, propitem));
+                            Item.AddProperty(new Property(Item, proptype, branchid));
                         }
 
                         break;

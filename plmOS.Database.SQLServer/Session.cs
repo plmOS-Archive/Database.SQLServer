@@ -141,6 +141,16 @@ namespace plmOS.Database.SQLServer
             this.Insert(Item, Item.ItemType, (Transaction)Transaction);
         }
 
+        public void Create(IRelationship Relationship, ITransaction Transaction)
+        {
+            this.Insert(Relationship, Relationship.ItemType, (Transaction)Transaction);
+        }
+
+        public void Create(IFile File, ITransaction Transaction)
+        {
+            this.Insert(File, File.ItemType, (Transaction)Transaction);
+        }
+
         public void Supercede(IItem Item, ITransaction Transaction)
         {
             String sql = "update " + this.RootItemTable.Name + " set superceded=" + Item.Superceded + " where versionid='" + Item.VersionID + "';";
@@ -149,6 +159,11 @@ namespace plmOS.Database.SQLServer
             {
                 command.ExecuteNonQuery();
             }
+        }
+
+        public IItem Get(Model.ItemType ItemType, Guid BranchID)
+        {
+            return this.TableCache[ItemType].Select(BranchID);
         }
 
         public IEnumerable<IItem> Get(Model.Queries.Item Query)
