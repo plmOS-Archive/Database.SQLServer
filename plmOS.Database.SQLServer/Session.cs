@@ -193,6 +193,11 @@ namespace plmOS.Database.SQLServer
             return new FileStream(vaultfile.FullName, FileMode.Create);
         }
 
+        public void Dispose()
+        {
+
+        }
+
         public Session(String Connection, DirectoryInfo VaultDirectory)
         {
             this.Connection = Connection;
