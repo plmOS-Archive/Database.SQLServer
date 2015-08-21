@@ -228,6 +228,10 @@ namespace plmOS.Database.SQLServer
                                     this._columns[colname] = new Column(this, colname, "datetime", true, -1, false, false);
                                     break;
 
+                                case Model.PropertyTypeValues.List:
+                                    this._columns[colname] = new Column(this, colname, "int", true, -1, false, false);
+                                    break;
+
                                 default:
                                     throw new NotImplementedException("PropertyType not implemented: " + proptype.Type);
                             }
@@ -395,6 +399,7 @@ namespace plmOS.Database.SQLServer
                 switch (PropertyType.Type)
                 {
                     case Model.PropertyTypeValues.Double:
+                    case Model.PropertyTypeValues.List:
                         return Value.ToString();
                     case Model.PropertyTypeValues.Item:
                     case Model.PropertyTypeValues.String:
@@ -559,6 +564,19 @@ namespace plmOS.Database.SQLServer
                         else
                         {
                             Item.AddProperty(new Property(Item, proptype, Reader.GetDateTime(cnt)));
+                        }
+
+                        break;
+
+                    case Model.PropertyTypeValues.List:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, null));
+                        }
+                        else
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetInt32(cnt)));
                         }
 
                         break;
