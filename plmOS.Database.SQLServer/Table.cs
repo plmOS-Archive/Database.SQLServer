@@ -454,7 +454,8 @@ namespace plmOS.Database.SQLServer
 
                 case "Property":
                     Model.Conditions.Property propcondition = (Model.Conditions.Property)Condition;
-                    return "(" + this.Session.Table(propcondition.PropertyType.ItemType).Name + "." + propcondition.PropertyType.Name.ToLower() + this.OperatorSQL(propcondition.Operator) + this.ValueSQL(propcondition.PropertyType, propcondition.Value) + ")";
+                    Model.PropertyType proptype = this.ItemType.PropertyType(propcondition.Name);
+                    return "(" + this.Session.Table(proptype.ItemType).Name + "." + proptype.Name.ToLower() + this.OperatorSQL(propcondition.Operator) + this.ValueSQL(proptype, propcondition.Value) + ")";
                 default:
                     throw new NotImplementedException("Condition Type not implemented: " + Condition.GetType().Name);
             }
