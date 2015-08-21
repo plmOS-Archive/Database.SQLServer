@@ -59,6 +59,22 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        public Boolean Initialised
+        {
+            get
+            {
+                return true;
+            }
+        }
+
+        public Boolean Saving
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         internal Model.ItemType RootItemType { get; private set; }
 
         internal Table RootItemTable
