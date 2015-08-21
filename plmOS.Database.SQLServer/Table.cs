@@ -178,6 +178,11 @@ namespace plmOS.Database.SQLServer
                     this._columns["itemid"] = new Column(this, "itemid", "uniqueidentifier", false, -1, false, false);
                 }
 
+                if (!this.HasColumn("itemtypeid"))
+                {
+                    this._columns["itemtypeid"] = new Column(this, "itemtypeid", "uniqueidentifier", false, -1, false, false);
+                }
+
                 if (!this.HasColumn("branched"))
                 {
                     this._columns["branched"] = new Column(this, "branched", "bigint", false, -1, false, false);
@@ -301,7 +306,7 @@ namespace plmOS.Database.SQLServer
 
             if (this.ItemType.Equals(this.RootItemType))
             {
-                sql += " (versionid,branchid,itemid,branched,versioned,superceded) values ('" + Item.VersionID + "','" + Item.BranchID + "','" + Item.ItemID + "'," + Item.Branched + "," + Item.Versioned + "," + Item.Superceded + ");";
+                sql += " (versionid,branchid,itemid,itemtypeid,branched,versioned,superceded) values ('" + Item.VersionID + "','" + Item.BranchID + "','" + Item.ItemID + "','" + Item.ItemType.ID + "'," + Item.Branched + "," + Item.Versioned + "," + Item.Superceded + ");";
             }
             else if (this.ItemType.Equals(this.RootRelationshipType))
             {
@@ -336,7 +341,7 @@ namespace plmOS.Database.SQLServer
         {
             get
             {
-                String sql = this.RootItemTableName + ".versionid," + this.RootItemTableName + ".branchid," + this.RootItemTableName + ".itemid," + this.RootItemTableName + ".branched," + this.RootItemTableName + ".versioned," + this.RootItemTableName + ".superceded";
+                String sql = this.RootItemTableName + ".versionid," + this.RootItemTableName + ".branchid," + this.RootItemTableName + ".itemid," + this.RootItemTableName + ".itemtypeid," + this.RootItemTableName + ".branched," + this.RootItemTableName + ".versioned," + this.RootItemTableName + ".superceded";
 
                 if (this.ItemType.IsSubclassOf(this.RootRelationshipType))
                 {
@@ -592,26 +597,26 @@ namespace plmOS.Database.SQLServer
 
         private void SetItemCommonProperties(Item Item, SqlDataReader Reader)
         {
-            Item.ItemType = this.ItemType;
             Item.VersionID = Reader.GetGuid(0);
             Item.BranchID = Reader.GetGuid(1);
             Item.ItemID = Reader.GetGuid(2);
-            Item.Branched = Reader.GetInt64(3);
-            Item.Versioned = Reader.GetInt64(4);
-            Item.Superceded = Reader.GetInt64(5);
+            Item.ItemType = this.Session.ItemType(Reader.GetGuid(3));
+            Item.Branched = Reader.GetInt64(4);
+            Item.Versioned = Reader.GetInt64(5);
+            Item.Superceded = Reader.GetInt64(6);
         }
 
         private void SetRelationshipProperties(Relationship Relationship, SqlDataReader Reader)
         {
             this.SetItemCommonProperties(Relationship, Reader);
-            Relationship.ParentBranchID = Reader.GetGuid(6);
-            this.SetItemProperties(Relationship, Reader, 7);
+            Relationship.ParentBranchID = Reader.GetGuid(7);
+            this.SetItemProperties(Relationship, Reader, 8);
         }
 
         private void SetItemProperties(Item Item, SqlDataReader Reader)
         {
             this.SetItemCommonProperties(Item, Reader);
-            this.SetItemProperties(Item, Reader, 6);
+            this.SetItemProperties(Item, Reader, 7);
         }
 
         private IEnumerable<Database.IItem> SelectItems(String SQL)

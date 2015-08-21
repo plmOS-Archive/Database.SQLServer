@@ -83,6 +83,13 @@ namespace plmOS.Database.SQLServer
 
         private Dictionary<Model.ItemType, Table> TableCache;
 
+        private Dictionary<Guid, Model.ItemType> ItemTypeCache;
+
+        public Model.ItemType ItemType(Guid ID)
+        {
+            return this.ItemTypeCache[ID];
+        }
+
         public void Create(Model.ItemType ItemType)
         {
             if (!this.TableCache.ContainsKey(ItemType))
@@ -97,6 +104,7 @@ namespace plmOS.Database.SQLServer
                 }
 
                 this.TableCache[ItemType] = new Table(this, ItemType);
+                this.ItemTypeCache[ItemType.ID] = ItemType;
             }
         }
 
@@ -115,6 +123,7 @@ namespace plmOS.Database.SQLServer
                 }
 
                 this.TableCache[RelationshipType] = new Table(this, RelationshipType);
+                this.ItemTypeCache[RelationshipType.ID] = RelationshipType;
             }
         }
 
@@ -203,6 +212,7 @@ namespace plmOS.Database.SQLServer
             this.Connection = Connection;
             this.VaultDirectory = VaultDirectory;
             this.TableCache = new Dictionary<Model.ItemType, Table>();
+            this.ItemTypeCache = new Dictionary<Guid, Model.ItemType>();
         }
     }
 }
