@@ -59,19 +59,19 @@ namespace plmOS.Database.SQLServer
             }
         }
 
-        public Boolean Initialised
+        public Boolean Reading
         {
             get
             {
-                return true;
+                return false;
             }
         }
 
-        public Boolean Saving
+        public Boolean Writing
         {
             get
             {
-                return true;
+                return false;
             }
         }
 
