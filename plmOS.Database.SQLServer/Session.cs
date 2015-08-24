@@ -75,6 +75,29 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        private Boolean _initialised;
+        public Boolean Initialised
+        {
+            get
+            {
+                return this._initialised;
+            }
+            private set
+            {
+                this._initialised = value;
+
+                if (this._initialised)
+                {
+                    if (this.InitialseCompleted != null)
+                    {
+                        this.InitialseCompleted(this, new EventArgs());
+                    }
+                }
+            }
+        }
+
+        public event EventHandler InitialseCompleted;
+
         internal Model.ItemType RootItemType { get; private set; }
 
         internal Table RootItemTable
@@ -229,6 +252,7 @@ namespace plmOS.Database.SQLServer
             this.VaultDirectory = VaultDirectory;
             this.TableCache = new Dictionary<Model.ItemType, Table>();
             this.ItemTypeCache = new Dictionary<Guid, Model.ItemType>();
+            this.Initialised = true;
         }
     }
 }
