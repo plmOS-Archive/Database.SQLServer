@@ -597,7 +597,7 @@ namespace plmOS.Database.SQLServer
                         }
                         else
                         {
-                            Item.AddProperty(new Property(Item, proptype, Reader.GetDateTime(cnt)));
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetDateTime(cnt).ToLocalTime()));
                         }
 
                         break;
