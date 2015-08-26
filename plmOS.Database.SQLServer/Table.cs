@@ -237,6 +237,10 @@ namespace plmOS.Database.SQLServer
                                     this._columns[colname] = new Column(this, colname, "int", true, -1, false, false);
                                     break;
 
+                                case Model.PropertyTypeValues.Boolean:
+                                    this._columns[colname] = new Column(this, colname, "bit", true, -1, false, false);
+                                    break;
+
                                 default:
                                     throw new NotImplementedException("PropertyType not implemented: " + proptype.Type);
                             }
@@ -411,6 +415,17 @@ namespace plmOS.Database.SQLServer
                         return "'" + Value.ToString() + "'";
                     case Model.PropertyTypeValues.DateTime:
                         return "'" + ((System.DateTime)Value).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fff") + "'";
+                    case Model.PropertyTypeValues.Boolean:
+
+                        if ((Boolean)Value)
+                        {
+                            return "1";
+                        }
+                        else
+                        {
+                            return "0";
+                        }
+
                     default:
                         throw new NotImplementedException("Invalid PropertyType: " + PropertyType.Type);
                 }
@@ -521,6 +536,19 @@ namespace plmOS.Database.SQLServer
             {
                 switch (proptype.Type)
                 {
+                    case Model.PropertyTypeValues.Boolean:
+
+                        if (Reader.IsDBNull(cnt))
+                        {
+                            Item.AddProperty(new Property(Item, proptype, null));
+                        }
+                        else
+                        {
+                            Item.AddProperty(new Property(Item, proptype, Reader.GetBoolean(cnt)));
+                        }
+
+                        break;
+
                     case Model.PropertyTypeValues.Double:
 
                         if (Reader.IsDBNull(cnt))
