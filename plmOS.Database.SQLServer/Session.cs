@@ -29,6 +29,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
 using System.IO;
+using System.ComponentModel;
 
 namespace plmOS.Database.SQLServer
 {
@@ -37,6 +38,16 @@ namespace plmOS.Database.SQLServer
         private const String RootItemTypeName = "plmOS.Model.Item";
         private const String RootFileTypeName = "plmOS.Model.File";
         private const String RootRelationshipTypeName = "plmOS.Model.Relationship";
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged(String Name)
+        {
+            if (this.PropertyChanged != null)
+            {
+                this.PropertyChanged.Invoke(this, new PropertyChangedEventArgs(Name));
+            }
+        }
 
         public String Connection { get; private set; }
 
@@ -84,19 +95,13 @@ namespace plmOS.Database.SQLServer
             }
             private set
             {
-                this._initialised = value;
-
-                if (this._initialised)
+                if (this._initialised != value)
                 {
-                    if (this.InitialseCompleted != null)
-                    {
-                        this.InitialseCompleted(this, new EventArgs());
-                    }
+                    this._initialised = value;
+                    this.OnPropertyChanged("Initialised");
                 }
             }
         }
-
-        public event EventHandler InitialseCompleted;
 
         internal Model.ItemType RootItemType { get; private set; }
 
@@ -248,6 +253,7 @@ namespace plmOS.Database.SQLServer
 
         public Session(String Connection, DirectoryInfo VaultDirectory)
         {
+            this.Initialised = false;
             this.Connection = Connection;
             this.VaultDirectory = VaultDirectory;
             this.TableCache = new Dictionary<Model.ItemType, Table>();
