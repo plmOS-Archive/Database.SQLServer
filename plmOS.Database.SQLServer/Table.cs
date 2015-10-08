@@ -411,6 +411,16 @@ namespace plmOS.Database.SQLServer
                     case Model.PropertyTypeValues.List:
                         return Value.ToString();
                     case Model.PropertyTypeValues.Item:
+
+                        if (Value is plmOS.Model.Item)
+                        {
+                            return "'" + ((plmOS.Model.Item)Value).BranchID.ToString() + "'";
+                        }
+                        else
+                        {
+                            return "'" + Value.ToString() + "'";
+                        }
+
                     case Model.PropertyTypeValues.String:
                         return "'" + Value.ToString() + "'";
                     case Model.PropertyTypeValues.DateTime:
