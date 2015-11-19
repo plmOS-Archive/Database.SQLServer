@@ -258,7 +258,7 @@ namespace plmOS.Database.SQLServer
                     if (!col.Exists)
                     {
                         // Add Column
-                        String addcolsql = "alter table " + this.Name + " add " + col.Name + " " + col.Type + ";";
+                        String addcolsql = "alter table " + this.Name + " add [" + col.Name + "] " + col.Type + ";";
 
                         using (SqlConnection connection = new SqlConnection(this.Session.Connection))
                         {

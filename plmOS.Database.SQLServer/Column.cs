@@ -53,7 +53,7 @@ namespace plmOS.Database.SQLServer
             {
                 if (this._sQL == null)
                 {
-                    this._sQL = this.Name + " " + this.Type;
+                    this._sQL = "[" + this.Name + "] " + this.Type;
 
                     if (this.Type == "nvarchar")
                     {
