@@ -86,6 +86,38 @@ namespace plmOS.Database.SQLServer
             }
         }
 
+        public Int32 ReadingTotal
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
+        public Int32 ReadingNumber
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
+        public Int32 WritingTotal
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
+        public Int32 WritingNumber
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
         private Boolean _initialised;
         public Boolean Initialised
         {
