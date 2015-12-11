@@ -422,7 +422,7 @@ namespace plmOS.Database.SQLServer
                         }
 
                     case Model.PropertyTypeValues.String:
-                        return "'" + Value.ToString() + "'";
+                        return "'" + Value.ToString().Replace("'", "''") + "'";
                     case Model.PropertyTypeValues.DateTime:
                         return "'" + ((System.DateTime)Value).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fff") + "'";
                     case Model.PropertyTypeValues.Boolean:
